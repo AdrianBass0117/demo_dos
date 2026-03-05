@@ -1,11 +1,11 @@
 <?php
 // protegido.php
 
-// --- INICIO DEL RATE LIMITER (El Escudo) ---
+// --- RATE LIMITER ---
 function checkRateLimit($ip) {
     $archivo_limite = 'limite_' . md5($ip) . '.json';
-    $tiempo_ventana = 10; // segundos
-    $max_peticiones = 5;  // máximo permitido
+    $tiempo_ventana = 10; 
+    $max_peticiones = 5; 
 
     $data = ['intentos' => 0, 'inicio' => time()];
     
@@ -13,57 +13,76 @@ function checkRateLimit($ip) {
         $data = json_decode(file_get_contents($archivo_limite), true);
     }
 
-    // Reiniciar contador si pasó el tiempo
     if (time() - $data['inicio'] > $tiempo_ventana) {
         $data['intentos'] = 0;
         $data['inicio'] = time();
     }
 
-    // BLOQUEO: Si supera el límite
     if ($data['intentos'] >= $max_peticiones) {
-        return false; // Denegar acceso
+        return false; 
     }
 
-    // Incrementar y guardar
     $data['intentos']++;
     file_put_contents($archivo_limite, json_encode($data));
-    return true; // Permitir acceso
+    return true; 
 }
 
-// Aplicar el escudo antes de cargar nada
+// BLOQUEO CON ESTILO
 if (!checkRateLimit($_SERVER['REMOTE_ADDR'])) {
     http_response_code(429);
-    die("<h1>⛔ ERROR 429: Demasiadas solicitudes.</h1><p>Has sido bloqueado temporalmente por el sistema de Rate Limiting.</p>");
+    // Imprimimos HTML completo para que el error se vea bien con el CSS
+    echo '<link rel="stylesheet" href="estilos.css">';
+    echo '<body class="vulnerable" style="flex-direction:column">';
+    echo '<div class="container error-page">';
+    echo '<h1>⛔ ALTO AHÍ</h1>';
+    echo '<h3>Error 429: Demasiadas Solicitudes</h3>';
+    echo '<p>El sistema de Rate Limiting ha detectado tráfico inusual desde tu IP.</p>';
+    echo '<p>Espera 10 segundos e intenta de nuevo.</p>';
+    echo '</div>';
+    echo '</body>';
+    exit(); // Detiene la ejecución
 }
-// --- FIN DEL RATE LIMITER ---
+// --- FIN RATE LIMITER ---
 
-// A partir de aquí, es el mismo código que el vulnerable
-sleep(1); // Carga simulada
+sleep(1); 
 session_start();
+$mensaje = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comentario'])) {
     file_put_contents('db_mensajes_seguros.txt', $_POST['comentario'] . "\n", FILE_APPEND);
+    $mensaje = "Mensaje seguro guardado.";
 }
 $comentarios = file_exists('db_mensajes_seguros.txt') ? file('db_mensajes_seguros.txt') : [];
 ?>
 
 <!DOCTYPE html>
-<html>
-<head><title>Sitio Protegido</title></head>
-<body style="background-color: #e0f7fa;">
-    <h1>Muro Blindado (Con Rate Limiting)</h1>
-    <p>Este sitio detecta si envías tráfico demasiado rápido.</p>
-    
-    <form method="POST">
-        <input type="text" name="comentario" placeholder="Escribe algo..." required>
-        <button type="submit">Publicar</button>
-    </form>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sitio Protegido</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body class="protegido">
 
-    <h3>Comentarios:</h3>
-    <ul>
-        <?php foreach($comentarios as $c): ?>
-            <li><?= htmlspecialchars($c) ?></li>
-        <?php endforeach; ?>
-    </ul>
+    <div class="container">
+        <h1>🛡️ Muro Protegido</h1>
+        <p>Con Rate Limiting activo. Tráfico seguro.</p>
+        
+        <form method="POST">
+            <input type="text" name="comentario" placeholder="Escribe algo..." required>
+            <br>
+            <button type="submit">Publicar Seguro</button>
+        </form>
+        
+        <p class="success"><?= $mensaje ?></p>
+
+        <h3>💬 Comentarios</h3>
+        <ul>
+            <?php foreach($comentarios as $c): ?>
+                <li><?= htmlspecialchars($c) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+
 </body>
 </html>
